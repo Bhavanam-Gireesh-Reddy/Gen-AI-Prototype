@@ -68,7 +68,7 @@ class CareerCounselorAgent:
 
     def _search_for_article(self, query: str) -> str:
         try:
-            search_results = search(f"{query} article tutorial", num_results=1, lang="en", pause=2.0)
+            search_results = search(f"{query} article tutorial", num_results=1, lang="en", pause=4.0)
             return next(search_results, "No relevant article found.")
         except Exception as e:
             st.warning(f"Web Search Error for query '{query}': {e}")
