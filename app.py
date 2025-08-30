@@ -46,7 +46,7 @@ class CareerCounselorAgent:
     def __init__(self, google_api_key: str, youtube_api_key: str):
         """Initializes the agent with API keys from Streamlit secrets."""
         try:
-            self.model = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.7, google_api_key=google_api_key)
+            self.model = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0.7, google_api_key=google_api_key)
             self.youtube_service = build('youtube', 'v3', developerKey=youtube_api_key)
         except Exception as e:
             st.error(f"Failed to initialize Google services: {e}")
