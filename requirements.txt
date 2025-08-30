@@ -1,0 +1,7 @@
+streamlit
+python-dotenv
+langchain
+langchain-google-genai
+pydantic
+google-api-python-client
+googlesearch-python
