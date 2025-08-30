@@ -47,7 +47,7 @@ class CareerCounselorAgent:
         """Initializes the agent with API keys from Streamlit secrets."""
         try:
             # CORRECTED MODEL NAME
-            self.model = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0.7, google_api_key=google_api_key)
+            self.model = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.7, google_api_key=google_api_key)
             self.youtube_service = build('youtube', 'v3', developerKey=youtube_api_key)
         except Exception as e:
             st.error(f"Failed to initialize Google services: {e}")
@@ -69,10 +69,10 @@ class CareerCounselorAgent:
 
     def _search_for_article(self, query: str) -> str:
         try:
+            # ADDED a 1-second delay to prevent rate-limiting issues
             time.sleep(1)
             search_results = search(f"{query} article tutorial", num_results=1, lang="en")
-            top_result = next(search_results, "No relevant article found.")
-            return top_result
+            return next(search_results, "No relevant article found.")
         except Exception as e:
             st.warning(f"Web Search Error for query '{query}': {e}")
             return "Could not fetch article link due to a search error."
@@ -116,8 +116,6 @@ def load_agent():
         youtube_api_key=st.secrets["YOUTUBE_API_KEY"]
     )
 
-# --- NEW: Functions to display results in a formatted way ---
-
 def display_domain_analysis(analysis: DomainAnalysis):
     """Formats and displays the domain analysis in a container."""
     with st.container(border=True):
@@ -146,7 +144,7 @@ def display_learning_path(path: LearningPath):
             if step.type == "video":
                 st.video(step.content) # Embed the video directly
             elif step.type == "reading":
-                st.markdown(f"**Suggested Reading:** Link : [{step.content}]")
+                st.markdown(f"**Suggested Reading:** [{step.content}]({step.content})")
             elif step.type == "project":
                 st.markdown(f"**Project Brief:** {step.content}")
 
@@ -195,7 +193,6 @@ if st.button("✨ Generate My Path", type="primary", use_container_width=True):
                 
                 st.success("Your personalized career plan is ready!")
 
-            # --- MODIFIED: Final Display using new functions ---
             if analysis_result:
                 st.header("1. Domain Analysis", divider="rainbow")
                 display_domain_analysis(analysis_result)
