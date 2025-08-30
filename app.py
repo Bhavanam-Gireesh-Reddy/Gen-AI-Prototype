@@ -3,6 +3,7 @@
 import streamlit as st
 from typing import List
 import sys
+import time # <--- IMPORT THE TIME MODULE
 
 # LangChain & Pydantic Imports
 from langchain_core.prompts import ChatPromptTemplate
@@ -37,7 +38,7 @@ class LearningPath(BaseModel):
     path: List[LearningStep] = Field(description="The full list of structured learning steps.")
 
 
-# --- 2. The Career Counselor Agent (Modified for Streamlit) ---
+# --- 2. The Career Counselor Agent ---
 
 class CareerCounselorAgent:
     """An AI agent that provides career analysis and learning paths using external tools."""
@@ -45,7 +46,7 @@ class CareerCounselorAgent:
     def __init__(self, google_api_key: str, youtube_api_key: str):
         """Initializes the agent with API keys from Streamlit secrets."""
         try:
-            self.model = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0.7, google_api_key=google_api_key)
+            self.model = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.7, google_api_key=google_api_key)
             self.youtube_service = build('youtube', 'v3', developerKey=youtube_api_key)
         except Exception as e:
             st.error(f"Failed to initialize Google services: {e}")
@@ -67,7 +68,8 @@ class CareerCounselorAgent:
 
     def _search_for_article(self, query: str) -> str:
         try:
-            # --- THIS IS THE CORRECTED LINE ---
+            # --- THIS IS THE CORRECTED SECTION ---
+            time.sleep(1) # Add a 1-second delay to avoid being rate-limited
             search_results = search(f"{query} article tutorial", num_results=1, lang="en")
             return next(search_results, "No relevant article found.")
         except Exception as e:
