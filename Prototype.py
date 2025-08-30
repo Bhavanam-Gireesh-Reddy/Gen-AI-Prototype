@@ -1,6 +1,9 @@
+# career_agent.py
+
 import os
 from dotenv import load_dotenv
 from typing import List
+import sys
 
 # LangChain & Pydantic Imports
 from langchain_core.prompts import ChatPromptTemplate
@@ -46,11 +49,15 @@ class CareerCounselorAgent:
         
         load_dotenv()
         if "GOOGLE_API_KEY" not in os.environ or "YOUTUBE_API_KEY" not in os.environ:
-            raise ValueError("🔴 CRITICAL: GOOGLE_API_KEY and YOUTUBE_API_KEY must be set in a .env file.")
+            # Using sys.exit() is cleaner for command-line tools
+            sys.exit("🔴 CRITICAL: GOOGLE_API_KEY and YOUTUBE_API_KEY must be set in a .env file.")
 
-        self.model = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.7)
-        self.youtube_service = build('youtube', 'v3', developerKey=os.environ["YOUTUBE_API_KEY"])
-        
+        try:
+            self.model = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.7)
+            self.youtube_service = build('youtube', 'v3', developerKey=os.environ["YOUTUBE_API_KEY"])
+        except Exception as e:
+            sys.exit(f"🔴 Failed to initialize Google services: {e}")
+            
         self._create_chains()
         print("✅ Agent is ready.")
 
@@ -87,7 +94,7 @@ class CareerCounselorAgent:
         """Builds the LangChain Expression Language (LCEL) chains."""
         analysis_parser = PydanticOutputParser(pydantic_object=DomainAnalysis)
         analysis_prompt = ChatPromptTemplate.from_messages([
-            ("system", "You are a futuristic career analyst... Respond with the requested JSON object..."),
+            ("system", "You are a futuristic career analyst and market researcher. Respond with the requested JSON object, following the format instructions precisely."),
             ("human", "Analyze the career domain: '{domain}'.\n\n{format_instructions}")
         ]).partial(format_instructions=analysis_parser.get_format_instructions())
         self.analysis_chain = analysis_prompt | self.model | analysis_parser
@@ -97,11 +104,11 @@ class CareerCounselorAgent:
             (
                 "system",
                 (
-                    "You are an expert curriculum developer... Your task is to create a personalized learning path... strictly following the user's preferred learning style. "
+                    "You are an expert curriculum developer. Your task is to create a personalized learning path as a JSON object, strictly following the user's preferred learning style. "
                     "- If the learning_style is 'visual', you MUST generate a path containing ONLY steps with the type 'video'. "
                     "- If the learning_style is 'reading', you MUST generate a path containing ONLY steps with the type 'reading'. "
                     "- If the learning_style is 'practical', you MUST generate a path containing ONLY steps with the type 'project'. "
-                    "Do not mix types..."
+                    "Do not mix types. Adhere strictly to the requested format instructions."
                 ),
             ),
             ("human", "Create a learning path for the '{domain}' domain, focusing on these skills: {key_skills}. The user's preferred learning style is '{learning_style}'.\n\n{format_instructions}")
@@ -162,7 +169,7 @@ class CareerCounselorAgent:
                     print(f"   -> Searching for an article about: '{step.content}'")
                     step.content = self._search_for_article(step.content)
 
-            # --- MODIFICATION: Final, separated printing of the two outputs ---
+            # --- Final, separated printing of the two outputs ---
             print("\n\n" + "="*25 + " RESULTS " + "="*25)
 
             # Output 1: Domain Analysis
