@@ -3,6 +3,7 @@
 import streamlit as st
 from typing import List
 import sys
+import time
 
 # LangChain & Pydantic Imports
 from langchain_core.prompts import ChatPromptTemplate
@@ -68,8 +69,10 @@ class CareerCounselorAgent:
 
     def _search_for_article(self, query: str) -> str:
         try:
-            search_results = search(f"{query} article tutorial", num_results=1, lang="en", pause=4.0)
-            return next(search_results, "No relevant article found.")
+            time.sleep(1)
+            search_results = search(f"{query} article tutorial", num_results=1, lang="en")
+            top_result = next(search_results, "No relevant article found.")
+            return top_result
         except Exception as e:
             st.warning(f"Web Search Error for query '{query}': {e}")
             return "Could not fetch article link due to a search error."
@@ -143,7 +146,7 @@ def display_learning_path(path: LearningPath):
             if step.type == "video":
                 st.video(step.content) # Embed the video directly
             elif step.type == "reading":
-                st.markdown(f"**Suggested Reading:** [{step.content}]({step.content})")
+                st.markdown(f"**Suggested Reading:** Link : [{step.content}]")
             elif step.type == "project":
                 st.markdown(f"**Project Brief:** {step.content}")
 
