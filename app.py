@@ -3,7 +3,6 @@
 import streamlit as st
 from typing import List
 import sys
-import time # <--- IMPORT THE TIME MODULE
 
 # LangChain & Pydantic Imports
 from langchain_core.prompts import ChatPromptTemplate
@@ -38,7 +37,7 @@ class LearningPath(BaseModel):
     path: List[LearningStep] = Field(description="The full list of structured learning steps.")
 
 
-# --- 2. The Career Counselor Agent ---
+# --- 2. The Career Counselor Agent (Modified for Streamlit) ---
 
 class CareerCounselorAgent:
     """An AI agent that provides career analysis and learning paths using external tools."""
@@ -46,6 +45,7 @@ class CareerCounselorAgent:
     def __init__(self, google_api_key: str, youtube_api_key: str):
         """Initializes the agent with API keys from Streamlit secrets."""
         try:
+            # CORRECTED MODEL NAME
             self.model = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.7, google_api_key=google_api_key)
             self.youtube_service = build('youtube', 'v3', developerKey=youtube_api_key)
         except Exception as e:
@@ -68,9 +68,7 @@ class CareerCounselorAgent:
 
     def _search_for_article(self, query: str) -> str:
         try:
-            # --- THIS IS THE CORRECTED SECTION ---
-            time.sleep(1) # Add a 1-second delay to avoid being rate-limited
-            search_results = search(f"{query} article tutorial", num_results=1, lang="en")
+            search_results = search(f"{query} article tutorial", num_results=1, lang="en", pause=2.0)
             return next(search_results, "No relevant article found.")
         except Exception as e:
             st.warning(f"Web Search Error for query '{query}': {e}")
@@ -115,6 +113,8 @@ def load_agent():
         youtube_api_key=st.secrets["YOUTUBE_API_KEY"]
     )
 
+# --- NEW: Functions to display results in a formatted way ---
+
 def display_domain_analysis(analysis: DomainAnalysis):
     """Formats and displays the domain analysis in a container."""
     with st.container(border=True):
@@ -125,6 +125,7 @@ def display_domain_analysis(analysis: DomainAnalysis):
         st.write(analysis.future_outlook_summary)
         
         st.markdown("**Key Growth Areas:**")
+        # Display as pills/tags
         st.markdown(" ".join(f"`{area}`" for area in analysis.growth_areas), unsafe_allow_html=True)
         
         st.subheader("💼 Emerging Roles", anchor=False)
@@ -140,7 +141,7 @@ def display_learning_path(path: LearningPath):
         for step in path.path:
             st.subheader(f"Step {step.step}: {step.title}", anchor=False)
             if step.type == "video":
-                st.video(step.content)
+                st.video(step.content) # Embed the video directly
             elif step.type == "reading":
                 st.markdown(f"**Suggested Reading:** [{step.content}]({step.content})")
             elif step.type == "project":
@@ -191,6 +192,7 @@ if st.button("✨ Generate My Path", type="primary", use_container_width=True):
                 
                 st.success("Your personalized career plan is ready!")
 
+            # --- MODIFIED: Final Display using new functions ---
             if analysis_result:
                 st.header("1. Domain Analysis", divider="rainbow")
                 display_domain_analysis(analysis_result)
