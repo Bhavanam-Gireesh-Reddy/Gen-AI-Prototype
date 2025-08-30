@@ -45,7 +45,6 @@ class CareerCounselorAgent:
     def __init__(self, google_api_key: str, youtube_api_key: str):
         """Initializes the agent with API keys from Streamlit secrets."""
         try:
-            # CORRECTED MODEL NAME
             self.model = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0.7, google_api_key=google_api_key)
             self.youtube_service = build('youtube', 'v3', developerKey=youtube_api_key)
         except Exception as e:
@@ -68,7 +67,7 @@ class CareerCounselorAgent:
 
     def _search_for_article(self, query: str) -> str:
         try:
-            search_results = search(f"{query} article tutorial", num_results=1, lang="en", pause=2.0)
+            search_results = search(f"{query} article tutorial", num_results=1, lang="en")
             return next(search_results, "No relevant article found.")
         except Exception as e:
             st.warning(f"Web Search Error for query '{query}': {e}")
