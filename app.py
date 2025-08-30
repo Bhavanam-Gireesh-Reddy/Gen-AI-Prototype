@@ -67,6 +67,7 @@ class CareerCounselorAgent:
 
     def _search_for_article(self, query: str) -> str:
         try:
+            # --- THIS IS THE CORRECTED LINE ---
             search_results = search(f"{query} article tutorial", num_results=1, lang="en")
             return next(search_results, "No relevant article found.")
         except Exception as e:
@@ -112,8 +113,6 @@ def load_agent():
         youtube_api_key=st.secrets["YOUTUBE_API_KEY"]
     )
 
-# --- NEW: Functions to display results in a formatted way ---
-
 def display_domain_analysis(analysis: DomainAnalysis):
     """Formats and displays the domain analysis in a container."""
     with st.container(border=True):
@@ -124,7 +123,6 @@ def display_domain_analysis(analysis: DomainAnalysis):
         st.write(analysis.future_outlook_summary)
         
         st.markdown("**Key Growth Areas:**")
-        # Display as pills/tags
         st.markdown(" ".join(f"`{area}`" for area in analysis.growth_areas), unsafe_allow_html=True)
         
         st.subheader("💼 Emerging Roles", anchor=False)
@@ -140,7 +138,7 @@ def display_learning_path(path: LearningPath):
         for step in path.path:
             st.subheader(f"Step {step.step}: {step.title}", anchor=False)
             if step.type == "video":
-                st.video(step.content) # Embed the video directly
+                st.video(step.content)
             elif step.type == "reading":
                 st.markdown(f"**Suggested Reading:** [{step.content}]({step.content})")
             elif step.type == "project":
@@ -191,7 +189,6 @@ if st.button("✨ Generate My Path", type="primary", use_container_width=True):
                 
                 st.success("Your personalized career plan is ready!")
 
-            # --- MODIFIED: Final Display using new functions ---
             if analysis_result:
                 st.header("1. Domain Analysis", divider="rainbow")
                 display_domain_analysis(analysis_result)
