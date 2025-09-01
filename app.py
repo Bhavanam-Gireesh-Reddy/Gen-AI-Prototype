@@ -22,9 +22,10 @@ class EmergingRole(BaseModel):
     description: str = Field(description="What this role involves and why it's emerging.")
     required_skills: List[str] = Field(description="A list of key skills needed for this role.")
 
+# --- MODIFICATION: Updated DomainAnalysis to expect lists for point-wise output ---
 class DomainAnalysis(BaseModel):
-    domain_overview: str = Field(description="A concise, engaging summary of what this domain is about.")
-    future_outlook_summary: str = Field(description="A 5-10 year projection for this domain, highlighting key trends and disruptions.")
+    domain_overview: List[str] = Field(description="A list of bullet points summarizing what this domain is about.")
+    future_outlook_summary: List[str] = Field(description="A list of bullet points for a 5-10 year projection, highlighting key trends and disruptions.")
     growth_areas: List[str] = Field(description="A list of specific areas projected to see significant growth.")
     emerging_roles: List[EmergingRole] = Field(description="A list of new and emerging job roles in this domain.")
 
@@ -38,7 +39,7 @@ class LearningPath(BaseModel):
     path: List[LearningStep] = Field(description="The full list of structured learning steps.")
 
 
-# --- 2. The Career Counselor Agent (Modified for Streamlit) ---
+# --- 2. The Career Counselor Agent ---
 
 class CareerCounselorAgent:
     """An AI agent that provides career analysis and learning paths using external tools."""
@@ -46,7 +47,6 @@ class CareerCounselorAgent:
     def __init__(self, google_api_key: str, youtube_api_key: str):
         """Initializes the agent with API keys from Streamlit secrets."""
         try:
-            # CORRECTED MODEL NAME
             self.model = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.7, google_api_key=google_api_key)
             self.youtube_service = build('youtube', 'v3', developerKey=youtube_api_key)
         except Exception as e:
@@ -69,8 +69,7 @@ class CareerCounselorAgent:
 
     def _search_for_article(self, query: str) -> str:
         try:
-            # ADDED a 1-second delay to prevent rate-limiting issues
-            time.sleep(1)
+            time.sleep(1) # Add a delay to avoid rate-limiting
             search_results = search(f"{query} article tutorial", num_results=1, lang="en")
             return next(search_results, "No relevant article found.")
         except Exception as e:
@@ -78,16 +77,19 @@ class CareerCounselorAgent:
             return "Could not fetch article link due to a search error."
 
     def _create_chains(self):
+        """Builds the LangChain Expression Language (LCEL) chains."""
         analysis_parser = PydanticOutputParser(pydantic_object=DomainAnalysis)
+        
+        # --- MODIFICATION: Updated prompt to ask for bullet points ---
         analysis_prompt = ChatPromptTemplate.from_messages([
-            ("system", "You are a futuristic career analyst..."),
+            ("system", "You are a futuristic career analyst. Respond with the requested JSON object. For 'domain_overview' and 'future_outlook_summary', provide the content as a list of clear, concise bullet points."),
             ("human", "Analyze the career domain: '{domain}'.\n\n{format_instructions}")
         ]).partial(format_instructions=analysis_parser.get_format_instructions())
         self.analysis_chain = analysis_prompt | self.model | analysis_parser
 
         path_parser = PydanticOutputParser(pydantic_object=LearningPath)
         path_prompt = ChatPromptTemplate.from_messages([
-            ("system", "You are an expert curriculum developer... Your task is to create a personalized learning path... strictly following the user's preferred learning style..."),
+            ("system", "You are an expert curriculum developer. Your task is to create a personalized learning path... strictly following the user's preferred learning style..."),
             ("human", "Create a learning path for the '{domain}' domain, focusing on these skills: {key_skills}. The user's preferred learning style is '{learning_style}'.\n\n{format_instructions}")
         ]).partial(format_instructions=path_parser.get_format_instructions())
         self.learning_path_chain = path_prompt | self.model | path_parser
@@ -116,18 +118,30 @@ def load_agent():
         youtube_api_key=st.secrets["YOUTUBE_API_KEY"]
     )
 
+# --- MODIFICATION: Rewritten display function for new format ---
 def display_domain_analysis(analysis: DomainAnalysis):
     """Formats and displays the domain analysis in a container."""
     with st.container(border=True):
         st.subheader("🌟 Domain Overview", anchor=False)
-        st.write(analysis.domain_overview)
+        for point in analysis.domain_overview:
+            st.markdown(f"- {point}")
         
         st.subheader("📈 Future Outlook (5-10 Years)", anchor=False)
-        st.write(analysis.future_outlook_summary)
+        for point in analysis.future_outlook_summary:
+            st.markdown(f"- {point}")
         
-        st.markdown("**Key Growth Areas:**")
-        # Display as pills/tags
-        st.markdown(" ".join(f"`{area}`" for area in analysis.growth_areas), unsafe_allow_html=True)
+        st.subheader("🔑 Key Growth Areas", anchor=False)
+        # Create two columns for the growth areas
+        col1, col2 = st.columns(2)
+        growth_areas = analysis.growth_areas
+        # Distribute items between the two columns
+        for i, area in enumerate(growth_areas):
+            if i % 2 == 0:
+                with col1:
+                    st.markdown(f"- {area}")
+            else:
+                with col2:
+                    st.markdown(f"- {area}")
         
         st.subheader("💼 Emerging Roles", anchor=False)
         for role in analysis.emerging_roles:
@@ -142,7 +156,7 @@ def display_learning_path(path: LearningPath):
         for step in path.path:
             st.subheader(f"Step {step.step}: {step.title}", anchor=False)
             if step.type == "video":
-                st.video(step.content) # Embed the video directly
+                st.video(step.content)
             elif step.type == "reading":
                 st.markdown(f"**Suggested Reading:** [{step.content}]({step.content})")
             elif step.type == "project":
