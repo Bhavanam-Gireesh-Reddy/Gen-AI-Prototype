@@ -76,6 +76,7 @@ class CareerCounselorAgent:
             return None
 
     def _create_chains(self):
+        """Builds the LangChain Expression Language (LCEL) chains."""
         analysis_parser = PydanticOutputParser(pydantic_object=DomainAnalysis)
         analysis_prompt = ChatPromptTemplate.from_messages([
             ("system", "You are a futuristic career analyst. Respond with the requested JSON object. For 'domain_overview' and 'future_outlook_summary', provide the content as a list of clear, concise bullet points."),
@@ -84,8 +85,20 @@ class CareerCounselorAgent:
         self.analysis_chain = analysis_prompt | self.model | analysis_parser
 
         path_parser = PydanticOutputParser(pydantic_object=LearningPath)
+        
+        # --- MODIFICATION: Hyper-specific and forceful prompt ---
         path_prompt = ChatPromptTemplate.from_messages([
-            ("system", "You are an expert curriculum developer. Your task is to create a personalized learning path... strictly following the user's preferred learning style... You are forbidden from mixing types."),
+            (
+                "system",
+                (
+                    "You are an expert curriculum developer. Your task is to generate a learning path containing ONLY ONE type of content, determined by the user's `learning_style`. "
+                    "Follow these rules strictly:\n"
+                    "- If `learning_style` is 'visual', every single step in the path MUST have the type 'video'.\n"
+                    "- If `learning_style` is 'reading', every single step in the path MUST have the type 'reading'.\n"
+                    "- If `learning_style` is 'practical', every single step in the path MUST have the type 'project'.\n"
+                    "Do NOT mix types under any circumstances. The entire path must be uniform. This is your most important instruction."
+                ),
+            ),
             ("human", "Create a learning path for the '{domain}' domain, focusing on these skills: {key_skills}. The user's preferred learning style is '{learning_style}'.\n\n{format_instructions}")
         ]).partial(format_instructions=path_parser.get_format_instructions())
         self.learning_path_chain = path_prompt | self.model | path_parser
@@ -143,7 +156,6 @@ def display_learning_path(path: LearningPath):
             elif step.type == "video":
                 st.video(step.content)
             elif step.type == "reading":
-                # CORRECTED MARKDOWN LINK FORMAT
                 st.markdown(f"**Suggested Reading:** [{step.content}]({step.content})")
             elif step.type == "project":
                 st.markdown(f"**Project Brief:** {step.content}")
@@ -156,7 +168,6 @@ st.markdown("Enter a career domain to get a 5-10 year forecast and a personalize
 
 agent = load_agent()
 
-# --- MODIFICATION: Initialize Session State ---
 if "analysis_result" not in st.session_state:
     st.session_state.analysis_result = None
 if "last_domain" not in st.session_state:
@@ -177,7 +188,6 @@ if st.button("✨ Generate My Path", type="primary", use_container_width=True):
         st.warning("Please enter a career domain.")
     else:
         try:
-            # --- MODIFICATION: Conditional logic using session state ---
             is_new_domain = target_domain != st.session_state.last_domain
             
             if is_new_domain:
