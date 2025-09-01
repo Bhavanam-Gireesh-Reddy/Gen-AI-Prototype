@@ -32,7 +32,7 @@ class LearningStep(BaseModel):
     step: int = Field(description="The sequential number of the learning step.")
     title: str = Field(description="A clear and descriptive title for this learning step.")
     type: str = Field(description="The type of learning content, e.g., 'reading', 'video', 'project'.")
-    content: str = Field(description="For 'video' or 'reading', a concise topic suitable for a web search. For 'project', a brief description of the project.")
+    content: str = Field(description="For 'video' or 'reading', a concise and highly specific searchable topic. For 'project', a brief description of the project.")
 
 class LearningPath(BaseModel):
     path: List[LearningStep] = Field(description="The full list of structured learning steps.")
@@ -53,10 +53,13 @@ class CareerCounselorAgent:
             st.stop()
         self._create_chains()
 
-    def _search_youtube_video(self, query: str) -> str | None:
+    # --- MODIFICATION: Search functions now accept the domain for better context ---
+    def _search_youtube_video(self, query: str, domain: str) -> str | None:
         try:
+            # Add domain to the query for more relevant results
+            search_query = f"{domain} {query} tutorial"
             search_response = self.youtube_service.search().list(
-                q=f"{query} tutorial", part='snippet', maxResults=1, type='video', videoDefinition='high'
+                q=search_query, part='snippet', maxResults=1, type='video', videoDefinition='high'
             ).execute()
             if search_response.get("items"):
                 video_id = search_response['items'][0]['id']['videoId']
@@ -66,10 +69,12 @@ class CareerCounselorAgent:
             st.warning(f"YouTube API Error for query '{query}': {e}")
             return None
 
-    def _search_for_article(self, query: str) -> str | None:
+    def _search_for_article(self, query: str, domain: str) -> str | None:
         try:
             time.sleep(1)
-            search_results = search(f"{query} article tutorial", num_results=1, lang="en")
+            # Add domain to the query for more relevant results
+            search_query = f"{domain} {query} article tutorial"
+            search_results = search(search_query, num_results=1, lang="en")
             return next(search_results, None)
         except Exception as e:
             st.warning(f"Web Search Error for query '{query}': {e}")
@@ -85,20 +90,8 @@ class CareerCounselorAgent:
         self.analysis_chain = analysis_prompt | self.model | analysis_parser
 
         path_parser = PydanticOutputParser(pydantic_object=LearningPath)
-        
-        # --- MODIFICATION: Hyper-specific and forceful prompt ---
         path_prompt = ChatPromptTemplate.from_messages([
-            (
-                "system",
-                (
-                    "You are an expert curriculum developer. Your task is to generate a learning path containing ONLY ONE type of content, determined by the user's `learning_style`. "
-                    "Follow these rules strictly:\n"
-                    "- If `learning_style` is 'visual', every single step in the path MUST have the type 'video'.\n"
-                    "- If `learning_style` is 'reading', every single step in the path MUST have the type 'reading'.\n"
-                    "- If `learning_style` is 'practical', every single step in the path MUST have the type 'project'.\n"
-                    "Do NOT mix types under any circumstances. The entire path must be uniform. This is your most important instruction."
-                ),
-            ),
+            ("system", "You are an expert curriculum developer... Your task is to generate a learning path containing ONLY ONE type of content, determined by the user's `learning_style`... Follow these rules strictly... Do NOT mix types under any circumstances..."),
             ("human", "Create a learning path for the '{domain}' domain, focusing on these skills: {key_skills}. The user's preferred learning style is '{learning_style}'.\n\n{format_instructions}")
         ]).partial(format_instructions=path_parser.get_format_instructions())
         self.learning_path_chain = path_prompt | self.model | path_parser
@@ -141,11 +134,14 @@ def display_domain_analysis(analysis: DomainAnalysis):
                 st.markdown("**Required Skills:**")
                 st.markdown(" ".join(f"`{skill}`" for skill in role.required_skills), unsafe_allow_html=True)
 
+# --- MODIFICATION: Updated error dialog as requested ---
 def handle_search_error(step: LearningStep):
-    with st.status("Sorry, an error occurred", state="error", expanded=True):
-        st.error(f"We couldn't find a resource for the topic: **{step.title}**.")
-        st.write("This can happen due to network issues or if the topic is very specific.")
-        st.write("You can try searching for this topic on Google or YouTube yourself!")
+    """Displays a user-friendly dialog box for a failed search."""
+    with st.status("Sorry, some content could not be found", state="error", expanded=True):
+        st.error(f"We couldn't find a reliable resource for the topic: **{step.title}**.")
+        st.info("Please go through these topics by searching for them on Google or YouTube yourself!")
+        # Display the topic names for the user to copy/search
+        st.code(step.title, language=None)
 
 def display_learning_path(path: LearningPath):
     with st.container(border=True):
@@ -208,10 +204,11 @@ if st.button("✨ Generate My Path", type="primary", use_container_width=True):
 
                 with st.spinner("🛠️ Finding the best online resources for you..."):
                     for step in learning_path_result.path:
+                        # --- MODIFICATION: Pass the domain to the search functions ---
                         if step.type == "video":
-                            step.content = agent._search_youtube_video(step.content)
+                            step.content = agent._search_youtube_video(step.content, target_domain)
                         elif step.type == "reading":
-                            step.content = agent._search_for_article(step.content)
+                            step.content = agent._search_for_article(step.content, target_domain)
                 
                 st.success("Your personalized career plan is ready!")
 
