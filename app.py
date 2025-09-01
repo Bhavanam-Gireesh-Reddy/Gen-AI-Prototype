@@ -22,7 +22,6 @@ class EmergingRole(BaseModel):
     description: str = Field(description="What this role involves and why it's emerging.")
     required_skills: List[str] = Field(description="A list of key skills needed for this role.")
 
-# --- MODIFICATION: Updated DomainAnalysis to expect lists for point-wise output ---
 class DomainAnalysis(BaseModel):
     domain_overview: List[str] = Field(description="A list of bullet points summarizing what this domain is about.")
     future_outlook_summary: List[str] = Field(description="A list of bullet points for a 5-10 year projection, highlighting key trends and disruptions.")
@@ -54,7 +53,7 @@ class CareerCounselorAgent:
             st.stop()
         self._create_chains()
 
-    def _search_youtube_video(self, query: str) -> str:
+    def _search_youtube_video(self, query: str) -> str | None:
         try:
             search_response = self.youtube_service.search().list(
                 q=f"{query} tutorial", part='snippet', maxResults=1, type='video', videoDefinition='high'
@@ -62,25 +61,23 @@ class CareerCounselorAgent:
             if search_response.get("items"):
                 video_id = search_response['items'][0]['id']['videoId']
                 return f"https://www.youtube.com/watch?v={video_id}"
-            return "No relevant video found."
+            return None # Return None on failure
         except Exception as e:
             st.warning(f"YouTube API Error for query '{query}': {e}")
-            return "Could not fetch video link due to an API error."
+            return None # Return None on exception
 
-    def _search_for_article(self, query: str) -> str:
+    def _search_for_article(self, query: str) -> str | None:
         try:
-            time.sleep(1) # Add a delay to avoid rate-limiting
+            time.sleep(1)
             search_results = search(f"{query} article tutorial", num_results=1, lang="en")
-            return next(search_results, "No relevant article found.")
+            return next(search_results, None) # Return None on failure
         except Exception as e:
             st.warning(f"Web Search Error for query '{query}': {e}")
-            return "Could not fetch article link due to a search error."
+            return None # Return None on exception
 
     def _create_chains(self):
         """Builds the LangChain Expression Language (LCEL) chains."""
         analysis_parser = PydanticOutputParser(pydantic_object=DomainAnalysis)
-        
-        # --- MODIFICATION: Updated prompt to ask for bullet points ---
         analysis_prompt = ChatPromptTemplate.from_messages([
             ("system", "You are a futuristic career analyst. Respond with the requested JSON object. For 'domain_overview' and 'future_outlook_summary', provide the content as a list of clear, concise bullet points."),
             ("human", "Analyze the career domain: '{domain}'.\n\n{format_instructions}")
@@ -88,8 +85,18 @@ class CareerCounselorAgent:
         self.analysis_chain = analysis_prompt | self.model | analysis_parser
 
         path_parser = PydanticOutputParser(pydantic_object=LearningPath)
+        
+        # --- MODIFICATION: Made the prompt even stricter ---
         path_prompt = ChatPromptTemplate.from_messages([
-            ("system", "You are an expert curriculum developer. Your task is to create a personalized learning path... strictly following the user's preferred learning style..."),
+            (
+                "system",
+                (
+                    "You are an expert curriculum developer. Your task is to create a personalized learning path as a JSON object, strictly following the user's preferred learning style. "
+                    "You are forbidden from mixing types. For example, if the learning_style is 'visual', you MUST generate a path containing ONLY steps with the type 'video'. "
+                    "If the style is 'reading', ONLY generate 'reading' steps. If the style is 'practical', ONLY generate 'project' steps. "
+                    "This is a strict requirement. Do not add any other types."
+                ),
+            ),
             ("human", "Create a learning path for the '{domain}' domain, focusing on these skills: {key_skills}. The user's preferred learning style is '{learning_style}'.\n\n{format_instructions}")
         ]).partial(format_instructions=path_parser.get_format_instructions())
         self.learning_path_chain = path_prompt | self.model | path_parser
@@ -118,7 +125,6 @@ def load_agent():
         youtube_api_key=st.secrets["YOUTUBE_API_KEY"]
     )
 
-# --- MODIFICATION: Rewritten display function for new format ---
 def display_domain_analysis(analysis: DomainAnalysis):
     """Formats and displays the domain analysis in a container."""
     with st.container(border=True):
@@ -131,17 +137,9 @@ def display_domain_analysis(analysis: DomainAnalysis):
             st.markdown(f"- {point}")
         
         st.subheader("🔑 Key Growth Areas", anchor=False)
-        # Create two columns for the growth areas
         col1, col2 = st.columns(2)
-        growth_areas = analysis.growth_areas
-        # Distribute items between the two columns
-        for i, area in enumerate(growth_areas):
-            if i % 2 == 0:
-                with col1:
-                    st.markdown(f"- {area}")
-            else:
-                with col2:
-                    st.markdown(f"- {area}")
+        for i, area in enumerate(analysis.growth_areas):
+            (col1 if i % 2 == 0 else col2).markdown(f"- {area}")
         
         st.subheader("💼 Emerging Roles", anchor=False)
         for role in analysis.emerging_roles:
@@ -150,17 +148,30 @@ def display_domain_analysis(analysis: DomainAnalysis):
                 st.markdown("**Required Skills:**")
                 st.markdown(" ".join(f"`{skill}`" for skill in role.required_skills), unsafe_allow_html=True)
 
+# --- MODIFICATION: New function to handle search errors gracefully ---
+def handle_search_error(step: LearningStep):
+    """Displays a user-friendly error message for a failed search."""
+    with st.status("Sorry, an error occurred", state="error", expanded=True):
+        st.error(f"We couldn't find a resource for the topic: **{step.title}**.")
+        st.write("This can happen due to network issues or if the topic is very specific.")
+        st.write("You can try searching for this topic on Google or YouTube yourself!")
+
 def display_learning_path(path: LearningPath):
     """Formats and displays the learning path in a container."""
     with st.container(border=True):
         for step in path.path:
             st.subheader(f"Step {step.step}: {step.title}", anchor=False)
-            if step.type == "video":
+            
+            # --- MODIFICATION: Check for None before displaying ---
+            if step.content is None:
+                handle_search_error(step) # Call the new error handler
+            elif step.type == "video":
                 st.video(step.content)
             elif step.type == "reading":
                 st.markdown(f"**Suggested Reading:** [{step.content}]({step.content})")
             elif step.type == "project":
                 st.markdown(f"**Project Brief:** {step.content}")
+
 
 # --- Main App Interface ---
 
