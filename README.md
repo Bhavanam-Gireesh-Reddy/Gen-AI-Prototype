@@ -2,8 +2,6 @@
 
 An AI-powered Streamlit application that provides in-depth career analysis and generates personalized learning paths for any domain. Get a 5-10 year forecast, discover emerging job roles, and receive a curated list of learning resources (videos, articles, or projects) tailored to your preferred style.
 
-![Future-Forward Career Planner Screenshot](https://i.imgur.com/8aB7J3E.png)
-
 ## ✨ Features
 
 -   **🤖 AI-Powered Domain Analysis:** Get a futuristic forecast of any career field, including an overview, 5-10 year outlook, and key growth areas.
