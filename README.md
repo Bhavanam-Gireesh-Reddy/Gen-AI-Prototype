@@ -56,5 +56,5 @@ Follow these instructions to set up and run the project locally.
 ### 2. Clone the Repository
 
 ```bash
-git clone [https://github.com/Bhavanam-Gireesh-Reddy/Gen-AI-Prototype.git](https://github.com/Bhavanam-Gireesh-Reddy/Gen-AI-Prototype.git)
+git clone https://github.com/Bhavanam-Gireesh-Reddy/Gen-AI-Prototype.git
 cd Gen-AI-Prototype
