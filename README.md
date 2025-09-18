@@ -58,3 +58,63 @@ Follow these instructions to set up and run the project locally.
 ```bash
 git clone https://github.com/Bhavanam-Gireesh-Reddy/Gen-AI-Prototype.git
 cd Gen-AI-Prototype
+```
+
+### 3. Set Up a Virtual Environment
+
+It's recommended to use a virtual environment to manage dependencies.
+```bash
+# For Windows
+python -m venv venv
+venv\Scripts\activate
+
+# For macOS/Linux
+python3 -m venv venv
+source venv/bin/activate
+```
+
+### 4. Install Dependencies
+
+Create a requirements.txt file with the following content:
+```bash
+streamlit
+langchain-core
+langchain-google-genai
+pydantic
+google-api-python-client
+googlesearch-python
+```
+Then, install the packages:
+```bash
+pip install -r requirements.txt
+```
+
+### 5. Configure API Keys
+
+This project uses Streamlit's secrets management. Create a file at ~/.streamlit/secrets.toml (or inside your project directory at .streamlit/secrets.toml) and add your API keys:
+```bash
+# .streamlit/secrets.toml
+
+GOOGLE_API_KEY = "YOUR_GOOGLE_AI_API_KEY"
+YOUTUBE_API_KEY = "YOUR_YOUTUBE_DATA_API_KEY"
+```
+
+### 6. Run the Application
+
+Launch the Streamlit app with the following command:
+```bash
+streamlit run app.py
+```
+
+Open your web browser and navigate to the local URL provided by Streamlit (usually http://localhost:8501).
+
+## 💡 Usage
+Enter a career domain you are interested in (e.g., "AI in FinTech", "Bioinformatics", "Decentralized Finance").
+
+Choose your preferred learning style from the dropdown (Visual, Reading, or Practical).
+
+Click the "✨ Generate My Path" button.
+
+Wait for the AI to perform the analysis and build your personalized plan.
+
+Explore your career forecast and start learning!
